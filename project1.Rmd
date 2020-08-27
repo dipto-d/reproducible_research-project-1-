@@ -1,0 +1,105 @@
+---
+title: "project-1"
+author: "dipto"
+date: "8/26/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+---
+creating a tidy data set
+```{r tidy}
+activity<-read.csv("activity.csv")
+activity$date <- as.POSIXct(activity$date, "%Y-%m-%d")
+weekday <- weekdays(activity$date)
+activity <- cbind(activity,weekday)
+
+```
+a histogram of the total number of steps taken per day
+```{r making histogram}
+activity_total_steps<-with(activity,(aggregate(steps, by=list(date), FUN=sum, na.rm=TRUE ) ) )
+names(activity_total_steps)<-c("date","steps")
+hist(activity_total_steps$steps, main = "Total number of steps taken in a day")
+
+```
+---
+calculating the mean and the median of the total number of steps taken in a day
+
+```{r mean and median}
+mean(activity_total_steps$steps)
+median(activity_total_steps$steps)
+
+```
+---
+plotting the average daily activity pattern
+```{r avg daily activity}
+average_daily_activity<- with(activity,(aggregate(steps, by=list(interval), FUN=mean, na.rm=TRUE ) ) )
+names(average_daily_activity)<-c("interval","mean_steps")
+plot(average_daily_activity$interval, average_daily_activity$mean_steps, type='l',xlab = "Interval",ylab = "Mean Steps Taken",main = "Average Daily Activity")
+
+```
+---
+calculating the maximum number of steps
+```{r max steps}
+average_daily_activity[which.max(average_daily_activity$mean_steps),]$interval
+
+```
+---
+calculating the number of missing values
+```{r calulating missing values}
+sum(is.na(activity$steps))
+
+```
+---
+imputing missing values
+```{r impute missing values}
+imputed_steps <- average_daily_activity$mean_steps[match(activity$interval,average_daily_activity$interval)]
+
+activity_imputed <- transform(activity, steps = ifelse(is.na(activity$steps), yes = imputed_steps, no = activity$steps))
+total_steps_imputed <- aggregate(steps ~ date, activity_imputed, sum)
+names(total_steps_imputed) <- c("date", "daily_steps")
+```
+---creating a histogram plot for total number of steps taken in a day
+```{r}
+hist(total_steps_imputed$daily_steps,main="Total number of steps taken in a day",xlab = "Daily Steps")
+```
+---
+the mean and the median of steps taken per day
+```{r}
+mean(total_steps_imputed$daily_steps)
+median(total_steps_imputed$daily_steps)
+```
+
+---
+finding differences in patterns of weekdays and weekends
+
+```{r}
+activity$date <- as.Date(strptime(activity$date, format="%Y-%m-%d"))
+activity$datetype <- sapply(activity$date, function(x) {
+        if (weekdays(x) == "Saturday" | weekdays(x) =="Sunday") 
+                {y <- "Weekend"} else 
+                {y <- "Weekday"}
+                y
+        })
+
+```
+making a plot of the differences
+```{r}
+library(ggplot2)
+activity_by_date <- aggregate(steps~interval + datetype, activity, mean, na.rm = TRUE)
+plot<- qplot(interval,steps,facets = .~datetype, data = activity_by_date,geom = "line")
+print(plot)
+```
+
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
